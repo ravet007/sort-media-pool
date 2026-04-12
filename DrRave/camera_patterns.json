@@ -1,0 +1,38 @@
+{
+  "_readme": "Edit this file to customise camera detection. Filename patterns match the START of the filename. Longer patterns take priority over shorter ones. Restart Resolve after editing.",
+
+  "_fujifilm_note": "Fujifilm detection uses binary search and should work automatically. If your Fujifilm clips land in Unknown, please send a sample clip to support@drrave.com and we will add detection in v1.1",
+
+  "_dji_note": "DJI files embed no camera model in the video file. Detection uses filename prefix DJI_ only. To get model-level bins (Mavic 3, Mini 4 Pro etc), add your own filename patterns below.",
+
+  "_android_note": "Android phones are auto-detected via manufacturer tags. Add custom patterns here for phones not automatically detected.",
+
+  "_custom_note": "Add your own filename patterns below. Example: \"MYFILE_\": \"My Camera Name\"",
+
+  "filename_patterns": {
+    "DJI_": "DJI Drone",
+    "GOPR": "GoPro",
+    "GX": "GoPro",
+    "GH": "GoPro",
+    "GL": "GoPro"
+  },
+
+  "minor_version_signatures": {
+    "538120216": "GoPro"
+  },
+
+  "firmware_signatures": {
+    "H2": "GoPro",
+    "H3": "GoPro",
+    "H4": "GoPro"
+  },
+
+  "brand_codes": {
+    "CAEP": "Canon",
+    "MXFW": "Sony",
+    "arri": "ARRI",
+    "niko": "Nikon",
+    "pana": "Panasonic",
+    "leic": "Leica"
+  }
+}
