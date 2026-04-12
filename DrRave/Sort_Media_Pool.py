@@ -228,27 +228,115 @@ def get_resolve():
 
 # ── Update check ──────────────────────────────────────────────────────────────
 
-def check_for_updates(current_version: str) -> None:
+def check_for_updates(current_version: str, resolve=None, fusion=None) -> None:
     """
-    Silently check GitHub for a newer version.  Prints a one-line notice only
-    when an update is available.  Any network or parse failure is swallowed so
-    an offline machine never sees an error.
+    Silently check GitHub for a newer version.
+
+    When an update is found, tries four approaches in order:
+      1. resolve.ShowMessage()        — Resolve native popup
+      2. fusion.ShowMessage()         — Fusion native popup
+      3. Fusion UI Manager dialog     — custom Fusion dialog window
+      4. osascript display dialog     — macOS native dialog (most reliable on Mac)
+      5. Console print                — terminal fallback
+    Any network or parse failure is swallowed so an offline machine is unaffected.
     """
     try:
         url = (
-            "https://raw.githubusercontent.com/drrave/"
+            "https://raw.githubusercontent.com/ravet007/"
             "sort-media-pool/main/version.json"
         )
         with urllib.request.urlopen(url, timeout=3) as r:
             data = json.loads(r.read())
         latest = data.get("version", "")
         notes  = data.get("release_notes", "")
-        if latest and latest != current_version:
+
+        if not latest or latest == current_version:
+            return
+
+        message = (
+            f"Sort Media Pool update available!\n\n"
+            f"New version: {latest}\n"
+            f"{notes}\n\n"
+            f"Visit drrave.com/sort-media-pool to download."
+        )
+
+        shown = False
+
+        # Approach 1 — Resolve native popup
+        if not shown and resolve:
+            try:
+                resolve.ShowMessage(message)
+                shown = True
+            except Exception:
+                pass
+
+        # Approach 2 — Fusion ShowMessage
+        if not shown and fusion:
+            try:
+                fusion.ShowMessage(message)
+                shown = True
+            except Exception:
+                pass
+
+        # Approach 3 — Fusion UI Manager dialog
+        if not shown and fusion:
+            try:
+                ui   = fusion.UIManager
+                disp = bmd.UIDispatcher(ui)
+                win  = ui.Window(
+                    {
+                        "ID": "UpdateDialog",
+                        "WindowTitle": "Sort Media Pool — Update Available",
+                        "Geometry": [400, 300, 400, 200],
+                        "Events": {"Close": True},
+                    },
+                    [
+                        ui.VGroup([
+                            ui.Label({"ID": "Msg", "Text": message, "WordWrap": True}),
+                            ui.Button({"ID": "OK", "Text": "OK"}),
+                        ])
+                    ],
+                )
+
+                def on_close(ev):
+                    disp.ExitLoop()
+
+                def on_ok(ev):
+                    disp.ExitLoop()
+
+                win.On.UpdateDialog.Close = on_close
+                win.On.OK.Click           = on_ok
+                win.Show()
+                disp.RunLoop()
+                win.Hide()
+                shown = True
+            except Exception:
+                pass
+
+        # Approach 4 — macOS native dialog via osascript
+        if not shown and platform.system() == "Darwin":
+            try:
+                safe = message.replace("\\", "\\\\").replace('"', '\\"')
+                subprocess.run(
+                    [
+                        "osascript", "-e",
+                        f'display dialog "{safe}" '
+                        f'buttons {{"OK"}} '
+                        f'default button "OK" '
+                        f'with title "Sort Media Pool Update"',
+                    ],
+                    timeout=30,
+                )
+                shown = True
+            except Exception:
+                pass
+
+        # Approach 5 — terminal fallback
+        if not shown:
             print(f"  ⚡ Update available: v{latest}")
-            if notes:
-                print(f"     {notes}")
-            print("     drrave.com/sort-media-pool")
-            print()
+            print(f"     {notes}")
+            print(f"     drrave.com/sort-media-pool")
+
     except Exception:
         pass
 
@@ -1382,7 +1470,6 @@ def main():
     print(f"  Sort Media Pool  v{VERSION}")
     print("  by DrRave  —  drrave.com")
     print("═══════════════════════════════════════")
-    check_for_updates(VERSION)
 
     parser = argparse.ArgumentParser(
         description="Organise DaVinci Resolve Media Pool by camera and media type."
@@ -1413,6 +1500,12 @@ def main():
         print("Error: Could not connect to DaVinci Resolve.")
         print("Make sure Resolve is open with a project loaded, then try again.")
         sys.exit(1)
+
+    try:
+        fusion = resolve.Fusion()
+    except Exception:
+        fusion = None
+    check_for_updates(VERSION, resolve=resolve, fusion=fusion)
 
     project = resolve.GetProjectManager().GetCurrentProject()
     if project is None:
