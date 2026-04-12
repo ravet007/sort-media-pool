@@ -1,11 +1,12 @@
+# -*- coding: utf-8 -*-
+# Requires Python 3.6+
+#!/usr/bin/env python3
 # Sort Media Pool
 # Automatically organises your Media Pool by camera and media type
 # Version: 1.0.0
 # Author: DrRave — drrave.com
-
-#!/usr/bin/env python3
 """
-sort_media_pool.py — Organise DaVinci Resolve Media Pool by camera make/model
+Sort_Media_Pool.py — Organise DaVinci Resolve Media Pool by camera make/model
 and media type.
 
 Standalone Resolve Script. Install in:
@@ -19,6 +20,13 @@ Command line:
   python3 Sort_Media_Pool.py            # organise the Media Pool
   python3 Sort_Media_Pool.py --dry-run  # preview without making changes
 """
+
+import sys
+if sys.version_info[0] < 3:
+    raise RuntimeError(
+        "Sort Media Pool requires Python 3. "
+        "Please ensure Python 3 is installed."
+    )
 
 import argparse
 import importlib.machinery
@@ -65,27 +73,111 @@ def _get_fusionscript_path() -> str:
     raise OSError(f"Unsupported OS: {system}")
 
 
+def _get_script_dir() -> Path:
+    """
+    Return the DrRave script directory.
+
+    Works in both execution contexts:
+      - Terminal: __file__ is defined, use its parent directly.
+      - Resolve menu: __file__ is not defined; search known install
+        locations on Mac and Windows, falling back to cwd.
+    """
+    # Terminal execution
+    try:
+        return Path(__file__).parent
+    except NameError:
+        pass
+
+    # Resolve menu execution — __file__ not available
+    system = platform.system()
+    if system == "Darwin":
+        candidates = [
+            # User install (most common)
+            Path(os.path.expanduser("~")) / (
+                "Library/Application Support/Blackmagic Design"
+                "/DaVinci Resolve/Fusion/Scripts/Utility/DrRave"
+            ),
+            # System-wide install
+            Path(
+                "/Library/Application Support/Blackmagic Design"
+                "/DaVinci Resolve/Fusion/Scripts/Utility/DrRave"
+            ),
+        ]
+    elif system == "Windows":
+        appdata = os.environ.get("APPDATA", "")
+        candidates = [
+            Path(appdata) / (
+                "Blackmagic Design/DaVinci Resolve/Support"
+                "/Fusion/Scripts/Utility/DrRave"
+            ),
+        ]
+    else:
+        candidates = []
+
+    for p in candidates:
+        if p.exists():
+            return p
+
+    return Path.cwd()
+
+
 def _get_ffprobe_path() -> str | None:
     """
     Resolve the ffprobe binary path.
 
     Priority:
-      1. Bundled binary shipped alongside this script in ffmpeg/mac/ or ffmpeg/win/
-         (auto-chmod'd on Mac so it is immediately executable)
-      2. System ffprobe found via PATH (shutil.which)
-      3. None — caller shows a warning and runs extension-only detection
+      1. Bundled binary in ffmpeg/mac/ or ffmpeg/win/ relative to the
+         script directory (works from terminal and Resolve menu).
+         Auto-chmod'd on Mac; macOS quarantine attribute cleared so
+         Gatekeeper does not block the first run.
+      2. System ffprobe found via PATH (shutil.which).
+      3. None — caller shows a warning and runs extension-only detection.
     """
-    script_dir = Path(__file__).parent
-    if platform.system() == "Windows":
-        bundled = script_dir / "ffmpeg" / "win" / "ffprobe.exe"
-    else:
-        bundled = script_dir / "ffmpeg" / "mac" / "ffprobe"
-        if bundled.exists():
-            bundled.chmod(bundled.stat().st_mode | stat.S_IEXEC)
+    script_dir = _get_script_dir()
+    system     = platform.system()
 
-    if bundled.exists():
-        return str(bundled)
+    if system == "Darwin":
+        # Check both the resolved script dir and both known install locations
+        mac_candidates = [
+            script_dir / "ffmpeg" / "mac" / "ffprobe",
+            Path(os.path.expanduser("~")) / (
+                "Library/Application Support/Blackmagic Design"
+                "/DaVinci Resolve/Fusion/Scripts/Utility/DrRave"
+                "/ffmpeg/mac/ffprobe"
+            ),
+            Path(
+                "/Library/Application Support/Blackmagic Design"
+                "/DaVinci Resolve/Fusion/Scripts/Utility/DrRave"
+                "/ffmpeg/mac/ffprobe"
+            ),
+        ]
+        for bundled in mac_candidates:
+            if bundled.exists():
+                # Ensure executable bit is set
+                bundled.chmod(bundled.stat().st_mode | stat.S_IEXEC)
+                # Remove macOS quarantine flag so Gatekeeper won't block it
+                try:
+                    subprocess.run(
+                        ["xattr", "-d", "com.apple.quarantine", str(bundled)],
+                        capture_output=True,
+                    )
+                except Exception:
+                    pass
+                return str(bundled)
 
+    elif system == "Windows":
+        win_candidates = [
+            script_dir / "ffmpeg" / "win" / "ffprobe.exe",
+            Path(os.environ.get("APPDATA", "")) / (
+                "Blackmagic Design/DaVinci Resolve/Support"
+                "/Fusion/Scripts/Utility/DrRave/ffmpeg/win/ffprobe.exe"
+            ),
+        ]
+        for bundled in win_candidates:
+            if bundled.exists():
+                return str(bundled)
+
+    # Fallback: system ffprobe on PATH
     system_ffprobe = shutil.which("ffprobe")
     if system_ffprobe:
         return system_ffprobe
@@ -236,7 +328,7 @@ def load_config() -> dict:
     Keys starting with '_' are documentation notes for the user and are stripped
     before returning so they never accidentally match a config lookup.
     """
-    config_path = Path(__file__).parent / "camera_patterns.json"
+    config_path = _get_script_dir() / "camera_patterns.json"
     try:
         with open(config_path, "r", encoding="utf-8") as f:
             raw = json.load(f)
