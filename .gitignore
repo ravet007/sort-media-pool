@@ -1,3 +1,5 @@
 DrRave/ffmpeg/
 __pycache__/
 *.pyc
+*.pyo
+.DS_Store
