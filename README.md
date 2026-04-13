@@ -1,4 +1,4 @@
-# Sort Media Pool — by DrRave
+# Sort Media Pool for DaVinci Resolve — by DrRave
 Automatically organises your DaVinci Resolve Media Pool by camera model and media type.
 
 > **Requires DaVinci Resolve Studio (paid version).** The free version of DaVinci Resolve does not support external scripting.
