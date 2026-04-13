@@ -121,6 +121,22 @@ def _get_script_dir() -> Path:
     return Path.cwd()
 
 
+def _subprocess_kwargs() -> dict:
+    """
+    Returns kwargs for subprocess.run() that hide the console window on Windows.
+    On Mac/Linux returns an empty dict — no change needed.
+    """
+    if platform.system() == "Windows":
+        si = subprocess.STARTUPINFO()
+        si.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        si.wShowWindow = subprocess.SW_HIDE
+        return {
+            "startupinfo": si,
+            "creationflags": subprocess.CREATE_NO_WINDOW,
+        }
+    return {}
+
+
 def _get_ffprobe_path() -> str | None:
     """
     Resolve the ffprobe binary path.
@@ -160,6 +176,7 @@ def _get_ffprobe_path() -> str | None:
                     subprocess.run(
                         ["xattr", "-d", "com.apple.quarantine", str(bundled)],
                         capture_output=True,
+                        **_subprocess_kwargs(),
                     )
                 except Exception:
                     pass
@@ -326,6 +343,7 @@ def check_for_updates(current_version: str, resolve=None, fusion=None) -> None:
                         f'with title "Sort Media Pool Update"',
                     ],
                     timeout=30,
+                    **_subprocess_kwargs(),
                 )
                 shown = True
             except Exception:
@@ -350,7 +368,8 @@ def check_ffprobe() -> bool:
     try:
         r = subprocess.run(
             [FFPROBE_PATH, "-version"],
-            capture_output=True, timeout=3
+            capture_output=True, timeout=3,
+            **_subprocess_kwargs(),
         )
         return r.returncode == 0
     except Exception:
@@ -388,7 +407,8 @@ def run_ffprobe(file_path: str) -> dict | None:
         try:
             r = subprocess.run(
                 base_args + extra + [file_path],
-                capture_output=True, timeout=3, text=True
+                capture_output=True, timeout=3, text=True,
+                **_subprocess_kwargs(),
             )
             if r.returncode == 0 and r.stdout.strip():
                 return json.loads(r.stdout)
