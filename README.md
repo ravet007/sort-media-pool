@@ -40,7 +40,7 @@ Sort Media Pool requires external scripting to be enabled in Resolve. This is a 
 
 ## Install — Mac
 
-1. Download `DrRave_Sort_Media_Pool_v1.0.0.zip` from drrave.com/sort-media-pool
+1. Download `DrRave_Sort_Media_Pool.zip` from drrave.com/tools/sort-media-pool
 2. Unzip the file
 3. Copy the `DrRave` folder to:
    ```
@@ -50,7 +50,7 @@ Sort Media Pool requires external scripting to be enabled in Resolve. This is a 
 
 ## Install — Windows
 
-1. Download `DrRave_Sort_Media_Pool_v1.0.0.zip` from drrave.com/sort-media-pool
+1. Download `DrRave_Sort_Media_Pool.zip` from drrave.com/tools/sort-media-pool
 2. Unzip the file
 3. Copy the `DrRave` folder to:
    ```
@@ -73,7 +73,7 @@ Sort Media Pool requires external scripting to be enabled in Resolve. This is a 
 
 When a new version is available, a popup will appear inside Resolve after running the script. To update:
 
-1. Visit drrave.com/sort-media-pool
+1. Visit drrave.com/tools/sort-media-pool
 2. Enter your email and download the new zip
 3. Unzip — find `Sort_Media_Pool.py` inside the `DrRave` folder
 4. Replace the old `Sort_Media_Pool.py` in your installed `DrRave` folder (same location as install above)
