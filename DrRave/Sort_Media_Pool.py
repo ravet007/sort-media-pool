@@ -831,6 +831,35 @@ def _search_binary(data: bytes) -> tuple[str, str | None] | None:
         model = m.group(1).decode("ascii", errors="ignore").strip()
         return f"Fujifilm {model}", None
 
+    # ── Insta360 ──────────────────────────────────────────────────────────────
+    # Embedded JSON event logs contain "device_type":"x3" etc.
+    # ffprobe tags show only generic avc1/isom — binary is the only source.
+    m = re.search(rb'"device_type"\s*:\s*"([^"]+)"', data)
+    if m:
+        device = m.group(1).decode("ascii", errors="ignore").strip().lower()
+
+        INSTA360_MODELS = {
+            "x3":      "Insta360 X3",
+            "x2":      "Insta360 X2",
+            "x4":      "Insta360 X4",
+            "one x2":  "Insta360 ONE X2",
+            "one x":   "Insta360 ONE X",
+            "one rs":  "Insta360 ONE RS",
+            "one r":   "Insta360 ONE R",
+            "go3":     "Insta360 GO 3",
+            "go2":     "Insta360 GO 2",
+            "ace pro": "Insta360 Ace Pro",
+            "ace":     "Insta360 Ace",
+        }
+
+        camera_name = INSTA360_MODELS.get(device)
+        if camera_name:
+            return camera_name, None
+
+        # Unknown Insta360 model — format nicely
+        if len(device) <= 20:
+            return f"Insta360 {device.upper()}", None
+
     # ── GoPro ─────────────────────────────────────────────────────────────────
     # HERO models: "HERO10 Black", "HERO12 Black", "HERO9 Black" etc.
     m = re.search(rb'HERO(\d+)\s+([A-Za-z]+)', data)
